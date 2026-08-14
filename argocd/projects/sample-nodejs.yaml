@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: sample-nodejs
+  namespace: argocd
+spec:
+  description: sample-nodejs application, dev environment
+
+  # Allow-list of sources. An Application in this project cannot deploy from anywhere
+  # else, so a compromised or mistaken Application manifest cannot point the cluster at
+  # an arbitrary repository.
+  sourceRepos:
+    - https://github.com/1bugo2/sample-nodejs-gitops.git
+    - ghcr.io/1bugo2/charts
+
+  # One namespace on one cluster. Without this, any Application in the project could
+  # deploy into kube-system.
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: sample-nodejs
+
+  # Empty means no cluster-scoped resources at all. The chart deliberately creates none,
+  # so this asserts that property rather than trusting it - a chart update that started
+  # creating a ClusterRole would be refused by ArgoCD instead of silently applied.
+  clusterResourceWhitelist: []
+
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
