@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ghcr-charts
+  namespace: argocd
+  labels:
+    # This label is how ArgoCD discovers repository definitions; without it the Secret is
+    # ignored and chart pulls fail with "repository not found".
+    argocd.argoproj.io/secret-type: repository
+  annotations:
+    # Applied before the Application that consumes it. Without the ordering, the first
+    # sync can race and fail to resolve the chart.
+    argocd.argoproj.io/sync-wave: "-1"
+type: Opaque
+stringData:
+  name: ghcr-charts
+  type: helm
+  url: ghcr.io/1bugo2/charts
+  # OCI registries are not Helm HTTP repositories and have to be flagged as such.
+  enableOCI: "true"
+  # No username or password: the chart package is public on purpose. Only the *image* is
+  # private, because that is what the task requires and what actually contains code. A
+  # readable chart also means this repo can be reviewed - and the chart installed against
+  # someone else's registry - without handing out a credential.
