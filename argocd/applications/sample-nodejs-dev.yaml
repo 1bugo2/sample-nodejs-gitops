@@ -1,0 +1,59 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-nodejs-dev
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: sample-nodejs
+
+  # Two sources. The chart is an immutable OCI artifact published by the release pipeline;
+  # the values come from this repository. That keeps the deployment TEMPLATE versioned with
+  # the application, while WHAT IS DEPLOYED stays reviewable here.
+  sources:
+    - repoURL: ghcr.io/1bugo2/charts
+      chart: sample-nodejs
+      # Bumped by the release pipeline. A published chart version, not a git branch, so
+      # the deployed template cannot change under us without a commit here.
+      targetRevision: 1.0.0
+      helm:
+        valueFiles:
+          # $values resolves to the source below that carries `ref: values`.
+          - $values/envs/dev/values.yaml
+    - repoURL: https://github.com/1bugo2/sample-nodejs-gitops.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sample-nodejs
+
+  syncPolicy:
+    automated:
+      # Delete resources removed from Git, rather than leaving orphans behind that nobody
+      # remembers creating.
+      prune: true
+      # Revert manual kubectl edits. Without this, Git stops being the source of truth the
+      # moment somebody patches something by hand at 3am.
+      selfHeal: true
+    syncOptions:
+      # The namespace is created out of band because it holds the registry pull Secret,
+      # which must exist before the first pod is scheduled.
+      - CreateNamespace=false
+      # Surfaces "why is this OutOfSync" in the UI instead of leaving a silent diff.
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+
+  # The HPA owns the replica count once it is running, so Helm's value would otherwise
+  # show as a permanent diff and selfHeal would fight the autoscaler on every sync.
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
