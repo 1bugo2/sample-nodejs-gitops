@@ -1,0 +1,33 @@
+# Environment: dev - single-node k3s lab at 192.168.56.101
+#
+# Overrides the chart defaults from 1bugo2/sample-nodejs. Only environment-specific
+# settings belong here; anything that should be true everywhere belongs in the chart.
+
+image:
+  # Written by the release pipeline in the app repo. A digest, not a tag: a tag can be
+  # repointed at different content, so pinning the digest means what Trivy scanned in CI
+  # is provably what runs here.
+  digest: ""
+
+# The release registry is private, so the cluster needs a pull credential. The Secret is
+# created out of band (see scripts/README) - only its name is committed.
+imagePullSecrets:
+  - name: ghcr-pull
+
+ingress:
+  className: traefik
+  # nip.io resolves the dashed IP, so no /etc/hosts edit is needed to reach the demo.
+  host: my-app.192-168-56-101.nip.io
+
+# Off in the chart's defaults because enforcement is CNI-specific and a policy that
+# blocks kubelet probes kills every pod. Enabled here because it was verified on this
+# cluster: probes kept passing with 0 restarts, a pod in another namespace was refused,
+# and Ingress traffic still returned 200.
+networkPolicy:
+  enabled: true
+
+# Left off until the Prometheus Operator CRDs are installed on this cluster; the chart
+# would fail to render the ServiceMonitor without them.
+metrics:
+  serviceMonitor:
+    enabled: false
