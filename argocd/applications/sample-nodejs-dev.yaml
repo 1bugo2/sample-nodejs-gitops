@@ -7,6 +7,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "0"
 spec:
   project: sample-nodejs
+
   # Two sources. The chart is an immutable OCI artifact published by the release pipeline;
   # the values come from this repository. That keeps the deployment TEMPLATE versioned with
   # the application, while WHAT IS DEPLOYED stays reviewable here.
@@ -15,7 +16,7 @@ spec:
       chart: sample-nodejs
       # Bumped by the release pipeline. A published chart version, not a git branch, so
       # the deployed template cannot change under us without a commit here.
-      targetRevision: 1.0.2
+      targetRevision: 1.0.0
       helm:
         valueFiles:
           # $values resolves to the source below that carries `ref: values`.
@@ -23,9 +24,11 @@ spec:
     - repoURL: https://github.com/1bugo2/sample-nodejs-gitops.git
       targetRevision: main
       ref: values
+
   destination:
     server: https://kubernetes.default.svc
     namespace: sample-nodejs
+
   syncPolicy:
     automated:
       # Delete resources removed from Git, rather than leaving orphans behind that nobody
@@ -46,6 +49,7 @@ spec:
         duration: 10s
         factor: 2
         maxDuration: 3m
+
   # The HPA owns the replica count once it is running, so Helm's value would otherwise
   # show as a permanent diff and selfHeal would fight the autoscaler on every sync.
   ignoreDifferences:
