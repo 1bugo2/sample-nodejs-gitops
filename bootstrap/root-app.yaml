@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    # Without this, deleting the root Application orphans everything it created rather
+    # than cleaning up.
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  # The app-of-apps pattern: this is the only manifest ever applied by hand. It watches
+  # argocd/ in this repository, so adding an environment or a project is a commit here
+  # rather than another kubectl apply somebody has to remember.
+  #
+  # It sits in the built-in `default` project because it creates the sample-nodejs
+  # AppProject - it cannot be governed by a project that does not exist yet.
+  project: default
+
+  source:
+    repoURL: https://github.com/1bugo2/sample-nodejs-gitops.git
+    targetRevision: main
+    path: argocd
+    directory:
+      recurse: true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
