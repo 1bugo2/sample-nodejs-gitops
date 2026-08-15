@@ -15,7 +15,7 @@ spec:
       chart: sample-nodejs
       # Bumped by the release pipeline. A published chart version, not a git branch, so
       # the deployed template cannot change under us without a commit here.
-      targetRevision: 1.1.3
+      targetRevision: 1.1.4
       helm:
         valueFiles:
           # $values resolves to the source below that carries `ref: values`.
