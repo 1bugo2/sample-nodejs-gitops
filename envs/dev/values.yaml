@@ -7,8 +7,8 @@ image:
   # Written by the release pipeline in the app repo. A digest, not a tag: a tag can be
   # repointed at different content, so pinning the digest means what Trivy scanned in CI
   # is provably what runs here.
-  digest: "sha256:3df9d757a1cc71e709308d380f5fd769a92fc1d583e79d139dfb708a829837d6"
-  tag: v1.0.3
+  digest: "sha256:57703fefdabfd90001d0cfedc839b336d246ed1cd9f7f28bb5eb0db1cb796e87"
+  tag: v1.0.4
 # The release registry is private, so the cluster needs a pull credential. The Secret is
 # created out of band (see scripts/README) - only its name is committed.
 imagePullSecrets:
