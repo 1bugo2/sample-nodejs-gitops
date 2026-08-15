@@ -17,6 +17,8 @@ NODE_MAJOR="22"
 # Recorded from the first successful run rather than guessed: chart 10.3.3 ships
 # ArgoCD v3.5.1. Clear this to take the latest, then re-pin to whatever it reports.
 ARGOCD_CHART_VERSION="10.3.3"
+# Recorded from the first successful run, same as ArgoCD above.
+MONITORING_CHART_VERSION="88.3.0"
 
 HOSTONLY_IP="192.168.56.101"
 HOSTONLY_IFACE="enp0s8"
@@ -167,6 +169,41 @@ helm upgrade --install argocd argo/argo-cd \
 log "Installed ArgoCD chart version (pin this in ARGOCD_CHART_VERSION for reproducibility)"
 helm list -n argocd -o json | jq -r '.[] | "chart=\(.chart)  app_version=\(.app_version)"'
 
+# ---------------------------------------------------------------------------------
+log "Installing kube-prometheus-stack"
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts >/dev/null 2>&1 || true
+helm repo update prometheus-community >/dev/null
+
+helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+  --namespace monitoring --create-namespace \
+  ${MONITORING_CHART_VERSION:+--version "$MONITORING_CHART_VERSION"} \
+  -f "$(dirname "$0")/monitoring-values.yaml" \
+  --wait --timeout 15m
+
+log "Scraping Traefik for request rate, error rate and latency"
+# k3s already starts Traefik with --metrics.prometheus=true and a named "metrics" port, so
+# this needs no change to the Traefik deployment - which matters, because k3s manages it
+# through a HelmChart CR that would overwrite a manual edit.
+#
+# Traefik is the source of RED metrics for the application: the app itself instruments no
+# request duration and no status codes, so rate/errors/latency have to come from the proxy
+# in front of it.
+kubectl apply -f - <<'PODMON'
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: traefik
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames: [kube-system]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: traefik
+  podMetricsEndpoints:
+    - port: metrics
+PODMON
+
 log "Cluster state"
 kubectl get pods -A
 cat <<EOF
@@ -174,6 +211,7 @@ cat <<EOF
 Bootstrap complete.
 
   ArgoCD UI    http://argocd.${HOSTONLY_IP//./-}.nip.io
+  Grafana      http://grafana.${HOSTONLY_IP//./-}.nip.io   (admin / admin)
   admin password
                kubectl -n argocd get secret argocd-initial-admin-secret \\
                  -o jsonpath='{.data.password}' | base64 -d; echo
