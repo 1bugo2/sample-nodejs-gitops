@@ -23,8 +23,13 @@ ingress:
 # and Ingress traffic still returned 200.
 networkPolicy:
   enabled: true
-# Left off until the Prometheus Operator CRDs are installed on this cluster; the chart
-# would fail to render the ServiceMonitor without them.
+# kube-prometheus-stack is installed on this cluster (see scripts/bootstrap-vm.sh), so the
+# Operator CRDs exist and all three can be turned on. They stay off in the chart's defaults
+# because a chart that fails to install without those CRDs is a bad default.
 metrics:
   serviceMonitor:
-    enabled: false
+    enabled: true
+  prometheusRule:
+    enabled: true
+  dashboard:
+    enabled: true
