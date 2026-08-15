@@ -1,0 +1,120 @@
+# kube-prometheus-stack values for a single-node k3s lab.
+#
+# The defaults assume a kubeadm-style cluster with separately exposed control-plane
+# components. k3s runs the scheduler, controller-manager, etcd and kube-proxy inside a
+# single process, so those default ServiceMonitors have nothing to scrape and show up as
+# permanently down - a wall of red that trains you to ignore the alerting you just built.
+# Disabling them is the point, not laziness.
+
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+prometheus:
+  prometheusSpec:
+    # 7 days is plenty for a lab and bounds the local-path PVC.
+    retention: 7d
+    retentionSize: 4GB
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 2Gi
+    # Without this, Prometheus only picks up ServiceMonitors carrying its own release
+    # label - which would silently exclude the application's ServiceMonitor from the
+    # chart, and the failure looks like "metrics just aren't appearing".
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 8Gi
+
+alertmanager:
+  # Kept, because alert *rules* are the deliverable and they need somewhere to fire to.
+  # No receivers are configured: there is nowhere sensible to page in a lab, and a
+  # pretend Slack webhook would be theatre.
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+
+grafana:
+  adminPassword: admin
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts:
+      - grafana.192-168-56-101.nip.io
+  # Picks up dashboards from any ConfigMap labelled grafana_dashboard, which is how the
+  # application chart ships its own dashboard as a versioned artifact rather than
+  # something clicked into the UI and lost on the next reinstall.
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+kubelet:
+  serviceMonitor:
+    # The node carries a ULA IPv6 address that k3s's kubelet does not listen on, so the
+    # operator generates IPv6 scrape targets for /metrics, /metrics/cadvisor and
+    # /metrics/probes that can never succeed. That fires TargetDown and
+    # KubeletInstanceUnreachable permanently - and alerting that is red on day one is
+    # alerting people learn to ignore. Keep only IPv4 targets.
+    #
+    # The metrics_path relabel is the chart's own default and has to be repeated, because
+    # supplying this list replaces it rather than appending to it.
+    relabelings:
+      - action: keep
+        sourceLabels: [__address__]
+        regex: '\d+\.\d+\.\d+\.\d+:\d+'
+      - sourceLabels: [__metrics_path__]
+        targetLabel: metrics_path
+    cAdvisorRelabelings:
+      - action: keep
+        sourceLabels: [__address__]
+        regex: '\d+\.\d+\.\d+\.\d+:\d+'
+      - sourceLabels: [__metrics_path__]
+        targetLabel: metrics_path
+    probesRelabelings:
+      - action: keep
+        sourceLabels: [__address__]
+        regex: '\d+\.\d+\.\d+\.\d+:\d+'
+      - sourceLabels: [__metrics_path__]
+        targetLabel: metrics_path
