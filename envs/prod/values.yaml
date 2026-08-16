@@ -5,13 +5,15 @@
 # separate cluster, which is exactly why the ArgoCD Application addresses its destination
 # by server URL rather than assuming in-cluster.
 #
-# What is real: prod's image digest and chart version are advanced by a SEPARATE, gated
-# pipeline job. Dev promotes automatically; prod waits for a human approval in a GitHub
-# Environment. So dev and prod legitimately sit on different versions, which is the point.
+# What is real: the release pipeline writes the SAME digest here as to dev, but the prod
+# Application has no automated sync policy - so this file records prod's intended state while
+# the cluster stays on the previous version until a human syncs it. Prod therefore lags dev
+# by an explicit human decision rather than by a separate build.
 
 image:
-  # Written by the promote-prod job in the app repo, only after approval. Lags dev until
-  # someone approves, which is what makes this a promotion rather than a broadcast.
+  # Written by the release pipeline at the same time as dev's, and with the identical value.
+  # Prod is a promotion of the artifact dev already ran, not a separate build - so approving
+  # prod approves something already exercised.
   digest: "sha256:eda79dcef14f6b9ba608e347466d5b275156b3263ca2c84cbc880fd5326e0cca"
   tag: "v1.2.0"
 imagePullSecrets:
