@@ -13,11 +13,14 @@ spec:
     - https://github.com/1bugo2/sample-nodejs-gitops.git
     - ghcr.io/1bugo2/charts
 
-  # One namespace on one cluster. Without this, any Application in the project could
-  # deploy into kube-system.
+  # An explicit list, not a wildcard. Without this, any Application in the project could
+  # deploy into kube-system. Adding an environment means adding a line here, which is the
+  # access-control change being deliberate rather than implicit.
   destinations:
     - server: https://kubernetes.default.svc
       namespace: sample-nodejs
+    - server: https://kubernetes.default.svc
+      namespace: sample-nodejs-prod
 
   # Empty means no cluster-scoped resources at all. The chart deliberately creates none,
   # so this asserts that property rather than trusting it - a chart update that started
