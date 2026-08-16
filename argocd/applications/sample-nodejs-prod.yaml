@@ -1,0 +1,62 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-nodejs-prod
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: sample-nodejs
+
+  sources:
+    - repoURL: ghcr.io/1bugo2/charts
+      chart: sample-nodejs
+      # Advanced only by the gated promote-prod job, so this legitimately lags the dev
+      # Application until someone approves the promotion.
+      targetRevision: 1.1.4
+      helm:
+        valueFiles:
+          - $values/envs/prod/values.yaml
+    - repoURL: https://github.com/1bugo2/sample-nodejs-gitops.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    # Addressed by server URL rather than assuming in-cluster, so pointing prod at a
+    # genuinely separate cluster later is a one-line change here rather than a redesign.
+    server: https://kubernetes.default.svc
+    namespace: sample-nodejs-prod
+
+  syncPolicy:
+    # NO `automated:` block - this is the approval gate, and it is deliberate.
+    #
+    # The release pipeline writes the same digest to dev and prod, so Git records the
+    # intended state for both immediately. Dev applies it automatically. Prod sits
+    # OutOfSync, showing the exact diff, until a human syncs it - either in the UI or with
+    # `argocd app sync sample-nodejs-prod`.
+    #
+    # The gate is in ArgoCD rather than in CI on purpose: the pipeline's job is to publish
+    # desired state, and whether to apply that to production is a deployment decision owned
+    # by the thing that does deployments. It also means CI needs no cluster credential and
+    # no extra privilege to have a production gate at all.
+    #
+    # This is a promotion, not a rebuild. Prod receives the identical image digest dev has
+    # already been running - so what a human approves is the artifact that was tested, not
+    # a fresh build that merely came from the same commit.
+    syncOptions:
+      # Namespace is created out of band because it must hold the registry pull Secret
+      # before the first pod is scheduled.
+      - CreateNamespace=false
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
