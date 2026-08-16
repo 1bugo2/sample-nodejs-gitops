@@ -14,8 +14,8 @@ image:
   # Written by the release pipeline at the same time as dev's, and with the identical value.
   # Prod is a promotion of the artifact dev already ran, not a separate build - so approving
   # prod approves something already exercised.
-  digest: "sha256:eda79dcef14f6b9ba608e347466d5b275156b3263ca2c84cbc880fd5326e0cca"
-  tag: "v1.2.0"
+  digest: "sha256:51f5bd117a161cdda3f66933220015fe2285426e6a79a5656f62eaeb12e236c1"
+  tag: "v1.2.1"
 imagePullSecrets:
   - name: ghcr-pull
 ingress:
