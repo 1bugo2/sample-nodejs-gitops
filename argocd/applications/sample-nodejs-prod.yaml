@@ -20,7 +20,7 @@ spec:
       chart: sample-nodejs
       # Written by the release pipeline alongside dev's. Because this Application has no
       # automated sync, advancing it here changes intent, not the running cluster.
-      targetRevision: 1.2.1
+      targetRevision: 1.3.0
       helm:
         valueFiles:
           - $values/envs/prod/values.yaml
