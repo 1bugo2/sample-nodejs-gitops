@@ -1,0 +1,55 @@
+# Environment: prod - same single-node k3s lab, separate namespace.
+#
+# Honest about what this is: prod here shares a node with dev, so it demonstrates the
+# promotion *mechanism* rather than genuine production isolation. A real prod would be a
+# separate cluster, which is exactly why the ArgoCD Application addresses its destination
+# by server URL rather than assuming in-cluster.
+#
+# What is real: prod's image digest and chart version are advanced by a SEPARATE, gated
+# pipeline job. Dev promotes automatically; prod waits for a human approval in a GitHub
+# Environment. So dev and prod legitimately sit on different versions, which is the point.
+
+image:
+  # Written by the promote-prod job in the app repo, only after approval. Lags dev until
+  # someone approves, which is what makes this a promotion rather than a broadcast.
+  digest: ""
+  tag: ""
+
+imagePullSecrets:
+  - name: ghcr-pull
+
+ingress:
+  className: traefik
+  host: my-app-prod.192-168-56-101.nip.io
+
+# Same allow-list as dev. /classified and /metrics stay unrouted - there is no argument for
+# loosening that in prod.
+
+# Floor of 2 rather than dev's, because prod should survive losing a pod without a cold
+# start. Ceiling stays modest: this shares a 4-vCPU node with dev and the monitoring stack,
+# and an aspirational maxReplicas the node cannot satisfy would just leave pods Pending.
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+    scaleDown:
+      # Longer than dev's 300s. Shedding prod capacity on a brief lull is the expensive
+      # mistake; waiting ten minutes to release two pods costs nothing.
+      stabilizationWindowSeconds: 600
+
+networkPolicy:
+  enabled: true
+
+metrics:
+  serviceMonitor:
+    enabled: true
+  prometheusRule:
+    enabled: true
+  dashboard:
+    # Off in prod: the dashboard ConfigMap is keyed on a fixed Grafana uid, so installing it
+    # from two releases makes them fight over the same dashboard. Dev owns it.
+    enabled: false
