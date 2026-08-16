@@ -12,16 +12,13 @@
 image:
   # Written by the promote-prod job in the app repo, only after approval. Lags dev until
   # someone approves, which is what makes this a promotion rather than a broadcast.
-  digest: ""
-  tag: ""
-
+  digest: "sha256:eda79dcef14f6b9ba608e347466d5b275156b3263ca2c84cbc880fd5326e0cca"
+  tag: "v1.2.0"
 imagePullSecrets:
   - name: ghcr-pull
-
 ingress:
   className: traefik
   host: my-app-prod.192-168-56-101.nip.io
-
 # Same allow-list as dev. /classified and /metrics stay unrouted - there is no argument for
 # loosening that in prod.
 
@@ -40,10 +37,8 @@ autoscaling:
       # Longer than dev's 300s. Shedding prod capacity on a brief lull is the expensive
       # mistake; waiting ten minutes to release two pods costs nothing.
       stabilizationWindowSeconds: 600
-
 networkPolicy:
   enabled: true
-
 metrics:
   serviceMonitor:
     enabled: true

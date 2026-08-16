@@ -7,26 +7,23 @@ metadata:
     argocd.argoproj.io/sync-wave: "0"
 spec:
   project: sample-nodejs
-
   sources:
     - repoURL: ghcr.io/1bugo2/charts
       chart: sample-nodejs
       # Advanced only by the gated promote-prod job, so this legitimately lags the dev
       # Application until someone approves the promotion.
-      targetRevision: 1.1.4
+      targetRevision: 1.2.0
       helm:
         valueFiles:
           - $values/envs/prod/values.yaml
     - repoURL: https://github.com/1bugo2/sample-nodejs-gitops.git
       targetRevision: main
       ref: values
-
   destination:
     # Addressed by server URL rather than assuming in-cluster, so pointing prod at a
     # genuinely separate cluster later is a one-line change here rather than a redesign.
     server: https://kubernetes.default.svc
     namespace: sample-nodejs-prod
-
   syncPolicy:
     # NO `automated:` block - this is the approval gate, and it is deliberate.
     #
@@ -54,7 +51,6 @@ spec:
         duration: 10s
         factor: 2
         maxDuration: 3m
-
   ignoreDifferences:
     - group: apps
       kind: Deployment
