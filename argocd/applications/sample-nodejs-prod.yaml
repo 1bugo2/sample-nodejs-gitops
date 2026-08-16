@@ -7,6 +7,16 @@ metadata:
     argocd.argoproj.io/sync-wave: "0"
 spec:
   project: sample-nodejs
+
+  # Rendered on the Application page in the UI. Without it, the only clue that this
+  # environment is gated is the ABSENCE of a syncPolicy.automated block - which nobody reads -
+  # plus an OutOfSync status that looks like a fault rather than a pending decision.
+  info:
+    - name: Deploy policy
+      value: "Manual sync required (promotion gate). OutOfSync means a release awaits approval, not a fault."
+    - name: Promoted artifact
+      value: "Receives the identical image digest already running in dev. A promotion, not a rebuild."
+
   sources:
     - repoURL: ghcr.io/1bugo2/charts
       chart: sample-nodejs
